@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Regulatory Vocabulary Trainer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1E2761;--navy-l:#CADCFC;--navy-d:#12195F;
+  --teal:#028090;--teal-l:#D6F0F3;--teal-d:#015E6A;--teal-m:#1D9E75;
+  --amber:#B07D12;--amber-l:#FEF3C7;--amber-d:#7C5A0A;
+  --coral:#993C1D;--coral-l:#FAECE7;--coral-m:#D85A30;
+  --purple:#534AB7;--purple-l:#EEEDFE;--purple-d:#3C3489;
+  --green-l:#E1F5EE;--green:#085041;
+  --gray:#64748B;--gray-l:#F1F5F9;--gray-m:#CBD5E1;--gray-d:#334155;
+  --bg:#F0F4F8;--card:#fff;--text:#1e293b;--text2:#475569;--text3:#94a3b8;
+  --radius:12px;--shadow:0 2px 8px rgba(0,0,0,.08);
+}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app-header{background:linear-gradient(135deg,var(--navy),var(--teal));padding:1.25rem 1.5rem 0;position:sticky;top:0;z-index:100}
+.app-title{color:#fff;font-size:1.05rem;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between}
+.reset-btn-top{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:7px;padding:.3rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s}
+.reset-btn-top:hover{background:rgba(255,255,255,.32)}
+.nav{display:flex;gap:.25rem;overflow-x:auto;padding-bottom:0}
+.nav-btn{flex-shrink:0;padding:.55rem 1rem;border:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:.78rem;font-weight:600;background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);transition:all .2s;white-space:nowrap}
+.nav-btn.active{background:#fff;color:var(--teal-d)}
+.nav-btn:hover:not(.active){background:rgba(255,255,255,.25)}
+.screen{display:none;padding:1.5rem;max-width:860px;margin:0 auto}
+.screen.active{display:block}
+.reset-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.1rem}
+.reset-bar h2{font-size:.9rem;color:var(--text2)}
+.btn-reset{background:transparent;border:1.5px solid var(--gray-m);color:var(--gray);border-radius:7px;padding:.35rem .85rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-reset:hover{border-color:var(--coral-m);color:var(--coral-m);background:var(--coral-l)}
+/* CARDS */
+.fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+.fc{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;perspective:600px;height:170px}
+.fc-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .5s}
+.fc.flipped .fc-inner{transform:rotateY(180deg)}
+.fc-front,.fc-back{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--radius);padding:1.1rem 1.2rem;display:flex;flex-direction:column;justify-content:space-between}
+.fc-front{background:var(--card);border:2px solid var(--teal-l)}
+.fc-back{background:var(--teal-l);border:2px solid var(--teal-m);transform:rotateY(180deg)}
+.fc-word{font-size:1.05rem;font-weight:700;color:var(--navy)}
+.fc-trans{font-size:.78rem;color:var(--teal-d);background:rgba(255,255,255,.6);padding:.2rem .5rem;border-radius:6px;display:inline-block;margin-top:.25rem}
+.fc-ipa{font-size:.75rem;color:var(--gray);font-family:monospace}
+.fc-hint{font-size:.7rem;color:var(--text3);text-align:right}
+.fc-example{font-size:.8rem;line-height:1.5;color:var(--gray-d)}
+.fc-label{font-size:.7rem;font-weight:700;color:var(--teal-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+/* MATCH */
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.match-col{display:flex;flex-direction:column;gap:.45rem}
+.match-item{padding:.55rem .85rem;border-radius:8px;border:2px solid var(--gray-m);background:var(--card);cursor:pointer;font-size:.82rem;font-weight:500;transition:all .18s;text-align:center;line-height:1.35}
+.match-item:hover:not(.used):not(.matched){border-color:var(--teal);background:var(--teal-l)}
+.match-item.selected{border-color:var(--teal);background:var(--teal-l);color:var(--teal-d)}
+.match-item.matched{border-color:var(--teal-m);background:var(--green-l);color:var(--green);cursor:default}
+.match-item.wrong{border-color:var(--coral-m);background:var(--coral-l);animation:shake .3s}
+.match-item.used{opacity:.35;cursor:default}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.match-score{text-align:center;padding:1rem;font-size:1rem;font-weight:600;color:var(--teal-d)}
+/* FILL BLANK */
+.fib-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.5rem;margin-bottom:1.2rem}
+.fib-sentence{font-size:1rem;line-height:2.2;font-weight:500;margin-bottom:1rem}
+.blank-input{display:inline-block;min-width:140px;border-bottom:2.5px solid var(--teal);padding:.1rem .4rem;margin:0 .25rem;border-radius:4px 4px 0 0;font-size:.9rem;text-align:center;color:var(--teal-d);background:transparent;cursor:pointer;transition:background .2s}
+.blank-input:hover:not(.locked){background:var(--teal-l)}
+.blank-input.b-correct{border-bottom-color:var(--teal-m);background:var(--green-l);color:var(--green)}
+.blank-input.b-wrong{border-bottom-color:var(--coral-m);background:var(--coral-l);color:var(--coral)}
+.fib-opts{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+.fib-opt{padding:.38rem .9rem;border-radius:20px;border:1.5px solid var(--gray-m);background:var(--card);font-size:.85rem;cursor:pointer;transition:all .18s}
+.fib-opt:hover:not(.used):not(.locked){border-color:var(--teal);background:var(--teal-l);color:var(--teal-d)}
+.fib-opt.used{opacity:.3;cursor:default}
+.fib-opt.locked{cursor:default}
+.fib-result{margin-top:.75rem;font-size:.83rem;padding:.6rem .9rem;border-radius:8px;display:none}
+.fib-result.show{display:block}
+.fib-result.ok{background:var(--green-l);color:var(--green);border-left:3px solid var(--teal-m)}
+.fib-result.bad{background:var(--coral-l);color:var(--coral);border-left:3px solid var(--coral-m)}
+/* QUIZ/TF/DEF */
+.q-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.5rem;margin-bottom:1.2rem}
+.q-num{font-size:.7rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.q-tag{display:inline-block;font-size:.67rem;font-weight:700;padding:.18rem .5rem;border-radius:20px;margin-left:.4rem;vertical-align:middle}
+.tag-tf{background:var(--purple-l);color:var(--purple-d)}
+.tag-def{background:var(--amber-l);color:var(--amber-d)}
+.tag-mc{background:var(--gray-l);color:var(--gray-d)}
+.q-text{font-size:.95rem;font-weight:500;line-height:1.55;margin-bottom:1rem}
+.q-word-focus{display:inline-block;background:var(--navy);color:#fff;padding:.15rem .6rem;border-radius:5px;font-family:monospace;font-size:.9rem;letter-spacing:.03em;margin:0 .15rem}
+.q-context{background:var(--gray-l);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.9rem;font-size:.87rem;line-height:1.55;color:var(--text2);font-style:italic}
+.opts{display:flex;flex-direction:column;gap:.45rem}
+.opt{display:flex;align-items:flex-start;gap:.7rem;padding:.7rem 1rem;border-radius:8px;border:1.5px solid var(--gray-m);cursor:pointer;font-size:.87rem;line-height:1.45;background:var(--card);transition:all .18s}
+.opt:hover:not(.dis){border-color:var(--teal);background:var(--teal-l)}
+.opt.ok{border-color:var(--teal-m);background:var(--green-l);color:var(--green)}
+.opt.bad{border-color:var(--coral-m);background:var(--coral-l);color:var(--coral)}
+.opt.dis{cursor:default}
+.opt-l{width:22px;height:22px;min-width:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--gray);margin-top:1px;flex-shrink:0}
+.opt.ok .opt-l{background:var(--teal-m);color:#fff}
+.opt.bad .opt-l{background:var(--coral-m);color:#fff}
+.exp-box{margin-top:.8rem;padding:.7rem 1rem;border-radius:8px;font-size:.82rem;line-height:1.6;display:none}
+.exp-box.show{display:block}
+.exp-ok{background:var(--green-l);border-left:3px solid var(--teal-m);color:var(--green)}
+.exp-bad{background:var(--coral-l);border-left:3px solid var(--coral-m);color:var(--coral)}
+/* SCORE BAR */
+.score-bar{display:flex;gap:.75rem;margin-bottom:1.25rem}
+.sc{flex:1;background:var(--card);border-radius:10px;padding:.65rem .9rem;text-align:center;border:1px solid var(--gray-m)}
+.sc .n{font-size:1.5rem;font-weight:700;color:var(--teal)}
+.sc .l{font-size:.7rem;color:var(--text3)}
+.prog-wrap{background:var(--card);border-radius:8px;height:7px;margin-bottom:1.25rem;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--navy));border-radius:8px;transition:width .4s}
+/* BUTTONS */
+.btn{padding:.6rem 1.3rem;border:none;border-radius:8px;cursor:pointer;font-size:.87rem;font-weight:600;transition:all .2s}
+.btn-p{background:var(--teal);color:#fff}.btn-p:hover{background:var(--teal-d)}
+.btn-o{background:transparent;border:2px solid var(--teal);color:var(--teal)}.btn-o:hover{background:var(--teal-l)}
+.result-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:2rem;text-align:center;margin-top:1rem}
+.result-big{font-size:2.8rem;font-weight:800;color:var(--teal)}
+/* GLOSSARY */
+.gloss-search{width:100%;padding:.7rem 1rem;border-radius:8px;border:1.5px solid var(--gray-m);font-size:.9rem;margin-bottom:1rem;background:var(--card);color:var(--text)}
+.gloss-letter{font-size:.7rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.1em;margin:1rem 0 .4rem;padding-left:.25rem}
+.gloss-item{background:var(--card);border-radius:8px;padding:.85rem 1.1rem;margin-bottom:.5rem;border-left:3px solid var(--teal-l)}
+.gloss-word{font-size:.95rem;font-weight:700;color:var(--navy)}
+.gloss-ipa{font-size:.75rem;font-family:monospace;color:var(--gray);margin:.1rem 0}
+.gloss-ru{font-size:.85rem;color:var(--teal-d);font-weight:600;margin:.15rem 0}
+.gloss-def{font-size:.82rem;color:var(--text2);line-height:1.5}
+/* TF focus word badge */
+.tf-focus{display:inline-block;background:var(--navy);color:var(--navy-l);padding:.12rem .55rem;border-radius:5px;font-weight:700;font-size:.88rem;font-family:monospace;margin:0 .1rem}
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-title">
+    <span>📚 Regulatory Vocabulary Trainer — 65 terms</span>
+    <button class="reset-btn-top" onclick="resetCurrent()">↺ Reset / Reshuffle</button>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="go('flashcards')">Flashcards</button>
+    <button class="nav-btn" onclick="go('match')">Match</button>
+    <button class="nav-btn" onclick="go('fillblank')">Fill blank</button>
+    <button class="nav-btn" onclick="go('quiz')">Quiz</button>
+    <button class="nav-btn" onclick="go('truefalse')">True / False</button>
+    <button class="nav-btn" onclick="go('definition')">Definition→Word</button>
+    <button class="nav-btn" onclick="go('glossary')">Glossary</button>
+  </nav>
+</div>
+
+<div class="screen active" id="sc-flashcards">
+  <div class="reset-bar">
+    <h2>Click a card to flip · <span id="fc-flipped">0</span> / <span id="fc-total">0</span> seen</h2>
+    <button class="btn-reset" onclick="resetSection('flashcards')">↺ Reset</button>
+  </div>
+  <div class="fc-grid" id="fc-grid"></div>
+</div>
+
+<div class="screen" id="sc-match">
+  <div class="reset-bar">
+    <h2>Match word with translation</h2>
+    <button class="btn-reset" onclick="resetSection('match')">↺ New set</button>
+  </div>
+  <div class="score-bar">
+    <div class="sc"><div class="n" id="m-matched">0</div><div class="l">Matched</div></div>
+    <div class="sc"><div class="n" id="m-total">10</div><div class="l">Total</div></div>
+    <div class="sc"><div class="n" id="m-tries">0</div><div class="l">Tries</div></div>
+  </div>
+  <div class="match-grid">
+    <div class="match-col" id="mc-words"></div>
+    <div class="match-col" id="mc-trans"></div>
+  </div>
+  <div class="match-score" id="match-done" style="display:none"></div>
+  <div style="text-align:center;margin-top:1rem">
+    <button class="btn btn-o" onclick="resetSection('match')">↺ New set of 10</button>
+  </div>
+</div>
+
+<div class="screen" id="sc-fillblank">
+  <div class="reset-bar">
+    <h2>Fill in the blank</h2>
+    <button class="btn-reset" onclick="resetSection('fillblank')">↺ Reset</button>
+  </div>
+  <div class="score-bar">
+    <div class="sc"><div class="n" id="fb-done">0</div><div class="l">Done</div></div>
+    <div class="sc"><div class="n" id="fb-ok">0</div><div class="l">Correct</div></div>
+    <div class="sc"><div class="n" id="fb-pct">0%</div><div class="l">Score</div></div>
+  </div>
+  <div class="prog-wrap"><div class="prog-fill" id="fb-prog" style="width:0%"></div></div>
+  <div id="fib-container"></div>
+</div>
+
+<div class="screen" id="sc-quiz">
+  <div class="reset-bar">
+    <h2>Choose the correct translation</h2>
+    <button class="btn-reset" onclick="resetSection('quiz')">↺ New set</button>
+  </div>
+  <div class="score-bar">
+    <div class="sc"><div class="n" id="qz-done">0</div><div class="l">Answered</div></div>
+    <div class="sc"><div class="n" id="qz-ok">0</div><div class="l">Correct</div></div>
+    <div class="sc"><div class="n" id="qz-pct">0%</div><div class="l">Score</div></div>
+  </div>
+  <div class="prog-wrap"><div class="prog-fill" id="qz-prog" style="width:0%"></div></div>
+  <div id="qz-container"></div>
+</div>
+
+<div class="screen" id="sc-truefalse">
+  <div class="reset-bar">
+    <h2>True or False?</h2>
+    <button class="btn-reset" onclick="resetSection('truefalse')">↺ New set</button>
+  </div>
+  <div class="score-bar">
+    <div class="sc"><div class="n" id="tf-done">0</div><div class="l">Done</div></div>
+    <div class="sc"><div class="n" id="tf-ok">0</div><div class="l">Correct</div></div>
+    <div class="sc"><div class="n" id="tf-pct">0%</div><div class="l">Score</div></div>
+  </div>
+  <div class="prog-wrap"><div class="prog-fill" id="tf-prog" style="width:0%"></div></div>
+  <div id="tf-container"></div>
+</div>
+
+<div class="screen" id="sc-definition">
+  <div class="reset-bar">
+    <h2>Definition → Word</h2>
+    <button class="btn-reset" onclick="resetSection('definition')">↺ New set</button>
+  </div>
+  <div class="score-bar">
+    <div class="sc"><div class="n" id="df-done">0</div><div class="l">Done</div></div>
+    <div class="sc"><div class="n" id="df-ok">0</div><div class="l">Correct</div></div>
+    <div class="sc"><div class="n" id="df-pct">0%</div><div class="l">Score</div></div>
+  </div>
+  <div class="prog-wrap"><div class="prog-fill" id="df-prog" style="width:0%"></div></div>
+  <div id="df-container"></div>
+</div>
+
+<div class="screen" id="sc-glossary">
+  <div class="reset-bar"><h2>Full glossary</h2><span></span></div>
+  <input class="gloss-search" id="gloss-search" placeholder="🔍 Search..." oninput="filterGloss()">
+  <div id="gloss-container"></div>
+</div>
+
+<script>
+// ── STORAGE HELPERS ──────────────────────────────────────────────────────────
+const SK='vocabTrainer_v2';
+function saveAll(){try{localStorage.setItem(SK,JSON.stringify(APP));}catch(e){}}
+function loadAll(){
+  try{
+    const d=localStorage.getItem(SK);
+    if(d){const p=JSON.parse(d);Object.assign(APP,p);}
+  }catch(e){}
+}
+
+// ── APP STATE ────────────────────────────────────────────────────────────────
+const APP={
+  currentScreen:'flashcards',
+  fc:{flipped:[]},
+  match:{set:null,words:[],trans:[],matched:[],tries:0,sel:null,selType:null},
+  fib:{order:[],answers:{},chosen:{}},
+  quiz:{order:[],answers:{}},
+  tf:{order:[],answers:{}},
+  def:{order:[],answers:{}}
+};
+
+// ── WORD DATA ────────────────────────────────────────────────────────────────
+const WORDS=[
+  {w:"statutory",ipa:"/ˈstætʃ.ə.tri/",ru:"установленный законом, нормативный",def:"Required, permitted, or enacted by statute (written law).",ex:"The FCA has statutory objectives set out in the Financial Services Act 2012.",cat:"law"},
+  {w:"Financial Conduct Authority (FCA)",ipa:"/kənˈdʌkt ɔːˈθɒr.ɪ.ti/",ru:"Управление по финансовому поведению",def:"The UK regulator responsible for conduct regulation of financial firms and consumer protection.",ex:"The Financial Conduct Authority oversees how firms treat their customers.",cat:"regulator"},
+  {w:"authority",ipa:"/ɔːˈθɒr.ɪ.ti/",ru:"полномочия; орган власти",def:"The power or right to give orders, make decisions, or enforce obedience; also a body with official power.",ex:"The regulator has the authority to investigate suspected market abuse.",cat:"law"},
+  {w:"prudential",ipa:"/pruːˈden.ʃəl/",ru:"пруденциальный (финансовая устойчивость)",def:"Relating to the financial soundness, solvency and stability of a firm.",ex:"The PRA focuses on prudential regulation — ensuring firms are financially sound.",cat:"regulation"},
+  {w:"Prudential Regulation Authority (PRA)",ipa:"/pruːˈden.ʃəl/",ru:"Орган пруденциального регулирования",def:"The UK regulator responsible for the prudential supervision of banks, insurers and major investment firms.",ex:"The Prudential Regulation Authority supervises banks' capital adequacy.",cat:"regulator"},
+  {w:"Financial Policy Committee (FPC)",ipa:"/ˈpɒl.ɪ.si kəˈmɪt.i/",ru:"Комитет по финансовой политике",def:"A committee of the Bank of England that identifies and addresses systemic risks to UK financial stability.",ex:"The Financial Policy Committee monitors risks to the stability of the UK economy.",cat:"regulator"},
+  {w:"solely",ipa:"/ˈsəʊl.li/",ru:"исключительно, единолично",def:"Only; not involving anyone or anything else.",ex:"The FCA is solely responsible for authorising investment intermediaries.",cat:"general"},
+  {w:"intermediaries",ipa:"/ˌɪn.tə.ˈmiː.di.ər.iz/",ru:"посредники",def:"Firms or individuals that act as a link between product providers and end consumers.",ex:"Independent financial advisers and brokers are classified as intermediaries.",cat:"regulation"},
+  {w:"investigate",ipa:"/ɪnˈves.tɪ.ɡeɪt/",ru:"расследовать, проверять",def:"To carry out a formal inquiry into a matter, especially suspected wrongdoing.",ex:"The FCA has the power to investigate insider dealing and market abuse.",cat:"action"},
+  {w:"abuse",ipa:"/əˈbjuːz/",ru:"злоупотребление; манипулирование (рынком)",def:"Improper or excessive use; in finance, conduct that manipulates markets unfairly.",ex:"Market abuse includes insider dealing and market manipulation.",cat:"law"},
+  {w:"oversee",ipa:"/ˌəʊ.vəˈsiː/",ru:"осуществлять надзор, контролировать",def:"To watch over and direct a process or activity to ensure it is carried out correctly.",ex:"The FCA oversees the Financial Ombudsman Service.",cat:"action"},
+  {w:"amend",ipa:"/əˈmend/",ru:"вносить поправки, изменять",def:"To make changes or corrections to a law, document or agreement.",ex:"The Financial Services Act 2012 amended FSMA 2000 significantly.",cat:"law"},
+  {w:"establish",ipa:"/ɪˈstæb.lɪʃ/",ru:"учреждать, создавать",def:"To set up on a firm or permanent basis; to create an institution or system.",ex:"FSMA established a new framework for regulating financial services in the UK.",cat:"action"},
+  {w:"enable",ipa:"/ɪˈneɪ.bəl/",ru:"давать возможность, позволять",def:"To give someone or something the authority, means or opportunity to do something.",ex:"FSMA enables the FCA to make rules that bind authorised firms.",cat:"action"},
+  {w:"formerly / former",ipa:"/ˈfɔː.mə.li/",ru:"ранее, прежде / бывший",def:"In the past; at an earlier time. Former = something that previously held a position.",ex:"The FCA's former predecessor, the FSA, was abolished in 2013.",cat:"general"},
+  {w:"particular",ipa:"/pəˈtɪk.jʊ.lə/",ru:"конкретный, определённый; особый",def:"Used to single out an individual member of a specified group or category.",ex:"The FCA may have regard to matters including, in particular, the ease of market entry.",cat:"general"},
+  {w:"prospect",ipa:"/ˈprɒs.pekt/",ru:"перспектива, возможность",def:"The possibility or likelihood of some future event occurring; a potential opportunity.",ex:"The FPC focuses on threats to the long-term growth prospects of the UK economy.",cat:"general"},
+  {w:"undertake",ipa:"/ˌʌn.dəˈteɪk/",ru:"предпринимать, брать на себя",def:"To commit oneself to do something; to carry out a task or responsibility.",ex:"FCA supervisors undertake a comprehensive conduct business model analysis of firms.",cat:"action"},
+  {w:"solo-regulated",ipa:"/ˌsəʊ.ləʊ ˈreɡ.jʊ.leɪ.tɪd/",ru:"под надзором только FCA",def:"Firms authorised by the FCA only — not dual-regulated by the PRA.",ex:"Stockbrokers are solo-regulated firms — supervised by the FCA alone.",cat:"regulation"},
+  {w:"offence",ipa:"/əˈfens/",ru:"правонарушение, уголовно наказуемое деяние",def:"An act that constitutes a breach of law and is liable to criminal prosecution.",ex:"Carrying on regulated activity without authorisation is a criminal offence under Section 19 FSMA.",cat:"law"},
+  {w:"exempt",ipa:"/ɪɡˈzempt/",ru:"освобождённый (от требований)",def:"Free from an obligation or liability that applies to others.",ex:"Certain appointed representatives are exempt from the requirement to be directly authorised.",cat:"law"},
+  {w:"exempt person",ipa:"/ɪɡˈzempt ˈpɜː.sən/",ru:"освобождённое лицо",def:"A person permitted to carry out regulated activities without FCA/PRA authorisation under FSMA.",ex:"An exempt person can conduct regulated activity without direct authorisation.",cat:"law"},
+  {w:"appropriate",ipa:"/əˈprəʊ.pri.ɪt/",ru:"надлежащий, соответствующий",def:"Suitable or proper in the circumstances.",ex:"The FCA seeks to secure an appropriate degree of protection for consumers.",cat:"general"},
+  {w:"integrity",ipa:"/ɪnˈteɡ.rɪ.ti/",ru:"честность; целостность (системы)",def:"The quality of being honest and having strong moral principles; in finance, the soundness of financial markets.",ex:"The FCA's integrity objective covers market stability, absence of crime, and transparent pricing.",cat:"regulation"},
+  {w:"resilience",ipa:"/rɪˈzɪl.i.əns/",ru:"устойчивость, способность к восстановлению",def:"The capacity to recover quickly from difficulties; the ability of a system to withstand stress.",ex:"The integrity objective includes soundness, stability and resilience of the financial system.",cat:"regulation"},
+  {w:"reliability",ipa:"/rɪˌlaɪ.əˈbɪl.ɪ.ti/",ru:"надёжность",def:"The quality of being trustworthy and performing consistently well.",ex:"The FCA promotes the reliability and transparency of the price formation process.",cat:"regulation"},
+  {w:"transparent / transparency",ipa:"/trænsˈpær.ənt/",ru:"прозрачный / прозрачность",def:"Open, clear and easily understood; not concealing information.",ex:"Transparency in price formation is a key element of the FCA's integrity objective.",cat:"general"},
+  {w:"impact",ipa:"/ˈɪm.pækt/",ru:"воздействие, влияние",def:"A strong effect or influence on someone or something.",ex:"The PRA assesses the potential impact a firm has on the stability of the UK financial system.",cat:"general"},
+  {w:"affect",ipa:"/əˈfekt/",ru:"влиять на, затрагивать (глагол)",def:"To have an effect on; to make a difference to. (Verb)",ex:"Market abuse affects the orderly functioning of financial markets.",cat:"general"},
+  {w:"effect",ipa:"/ɪˈfekt/",ru:"результат, следствие; эффект (существительное)",def:"A change that is a result or consequence of an action or other cause. (Noun)",ex:"The PRA seeks to avoid any adverse effect on UK financial system stability.",cat:"general"},
+  {w:"suitability",ipa:"/ˌsuː.tə.ˈbɪl.ɪ.ti/",ru:"пригодность, соответствие",def:"The quality of being right or appropriate for a particular purpose or situation.",ex:"The FCA's integrity objective includes the suitability of the listing rules.",cat:"regulation"},
+  {w:"answerable",ipa:"/ˈɑːn.sər.ə.bəl/",ru:"подотчётный (отвечает перед кем-то)",def:"Required to account for one's actions; responsible to someone in authority.",ex:"The PRA is answerable to Parliament via the House of Commons Treasury Committee.",cat:"governance"},
+  {w:"ease",ipa:"/iːz/",ru:"лёгкость, простота",def:"Absence of difficulty or effort; how simple it is to do something.",ex:"The FCA considers the ease with which consumers can switch providers.",cat:"general"},
+  {w:"seeking to",ipa:"/ˈsiː.kɪŋ tuː/",ru:"стремясь (к), добиваясь",def:"Trying or attempting to do or achieve something.",ex:"The PRA advances its objective by seeking to ensure firms avoid adverse effects on stability.",cat:"general"},
+  {w:"ensure",ipa:"/ɪnˈʃɔː/",ru:"обеспечивать, гарантировать",def:"To make certain that something will happen or be the case.",ex:"The supervisory approach must ensure the statutory objectives are met.",cat:"action"},
+  {w:"rely",ipa:"/rɪˈlaɪ/",ru:"полагаться, опираться",def:"To depend on or trust in someone or something.",ex:"The PRA's approach relies significantly on the judgement of its supervisors.",cat:"general"},
+  {w:"related",ipa:"/rɪˈleɪ.tɪd/",ru:"связанный, относящийся",def:"Connected to or associated with something.",ex:"The insurance objective relates to activities connected with contracts of insurance.",cat:"general"},
+  {w:"contribute / contributing",ipa:"/kənˈtrɪb.juːt/",ru:"вносить вклад, способствовать",def:"To give or supply something as part of a collective effort; to help cause or produce.",ex:"The insurance objective contributes to securing protection for policyholders.",cat:"action"},
+  {w:"policyholder",ipa:"/ˈpɒl.ɪ.si.həʊl.də/",ru:"страхователь, держатель полиса",def:"A person or organisation that holds an insurance policy.",ex:"The PRA's insurance objective protects those who are or may become policyholders.",cat:"regulation"},
+  {w:"objective",ipa:"/əbˈdʒek.tɪv/",ru:"цель, задача",def:"A goal or aim; something worked towards or striven for.",ex:"The FCA has one strategic objective and three operational objectives.",cat:"general"},
+  {w:"harm",ipa:"/hɑːm/",ru:"вред, ущерб",def:"Physical or mental damage; injury or damage to someone's interests.",ex:"Proactive supervision aims to identify and prevent harm to consumers before it occurs.",cat:"regulation"},
+  {w:"standing",ipa:"/ˈstæn.dɪŋ/",ru:"положение, репутация, статус",def:"The position, reputation or status that someone or something holds in the eyes of others.",ex:"The FCA will not take action that would harm the UK's standing in international financial markets.",cat:"general"},
+  {w:"scrutinised / scrutiny",ipa:"/ˈskruː.tɪ.naɪzd/",ru:"тщательно проверяемый / тщательная проверка",def:"Subjected to critical observation or examination. Scrutiny = close and detailed examination.",ex:"The FCA's annual report is scrutinised by Parliamentary committees.",cat:"governance"},
+  {w:"accountable",ipa:"/əˈkaʊn.tə.bəl/",ru:"подотчётный, несущий ответственность",def:"Required or expected to justify actions or decisions; responsible to an authority.",ex:"The FCA and PRA will be held accountable if regulatory failures occur.",cat:"governance"},
+  {w:"breaches",ipa:"/ˈbriː.tʃɪz/",ru:"нарушения (правил, законов)",def:"Failures to observe a law, agreement, or code of conduct.",ex:"The FCA and PRA are liable if breaches of objectives are made worse by regulatory failure.",cat:"law"},
+  {w:"occur",ipa:"/əˈkɜː/",ru:"происходить, иметь место",def:"To happen; to take place.",ex:"If regulatory breaches occur, the regulator may be held accountable.",cat:"general"},
+  {w:"supervisory approach",ipa:"/ˌsuː.pəˈvaɪ.zər.i əˈprəʊtʃ/",ru:"надзорный подход",def:"The methodology and principles used by a regulator to monitor and oversee regulated firms.",ex:"The PRA's supervisory approach is judgement-based, forward-looking and risk-focused.",cat:"regulation"},
+  {w:"governance",ipa:"/ˈɡʌv.ə.nəns/",ru:"управление, корпоративное управление",def:"The system by which organisations are directed, controlled and held accountable.",ex:"The FCA assesses individuals' ability to contribute to effective governance of their firms.",cat:"governance"},
+  {w:"at times",ipa:"/ət taɪmz/",ru:"порой, иногда",def:"Occasionally; sometimes but not always.",ex:"The FCA may make judgements that, at times, will be at variance with those of the firms.",cat:"general"},
+  {w:"variance",ipa:"/ˈveər.i.əns/",ru:"расхождение, несоответствие",def:"The fact or quality of being different, divergent, or inconsistent.",ex:"The new supervisory approach requires the FCA to make judgements at variance with firms' own views.",cat:"general"},
+  {w:"deterrence",ipa:"/dɪˈter.əns/",ru:"сдерживание (нарушений)",def:"The action of discouraging misconduct through instilling fear of consequences.",ex:"A key goal of FCA supervision is credible deterrence — making firms fear the consequences of misconduct.",cat:"regulation"},
+  {w:"penalties",ipa:"/ˈpen.əl.tiz/",ru:"санкции, штрафы, наказания",def:"Punishments imposed for breaking a law, rule or contract, typically financial.",ex:"The FCA aims for a consistent and transparent framework for calculating financial penalties.",cat:"law"},
+  {w:"shortcomings",ipa:"/ˈʃɔːt.kʌm.ɪŋz/",ru:"недостатки, упущения",def:"Faults or failures to reach a required standard.",ex:"PRA supervisors assess whether firms have shortcomings that need to be addressed.",cat:"general"},
+  {w:"Threshold Conditions",ipa:"/ˈθreʃ.həʊld kənˈdɪʃ.ənz/",ru:"Пороговые условия",def:"The minimum standards a firm must meet to be authorised and to remain authorised by the PRA.",ex:"The PRA assesses whether a firm is likely to continue to meet the Threshold Conditions.",cat:"regulation"},
+  {w:"involve",ipa:"/ɪnˈvɒlv/",ru:"включать, предполагать, затрагивать",def:"To include or affect someone or something as a necessary part or result.",ex:"The supervisory process involves regular review by independent staff.",cat:"general"},
+  {w:"mitigating",ipa:"/ˈmɪt.ɪ.ɡeɪ.tɪŋ/",ru:"смягчающий, нейтрализующий",def:"Making something less severe, serious, or painful; reducing the impact of a risk.",ex:"The PRA deducts mitigating factors from gross risk to calculate net risk.",cat:"regulation"},
+  {w:"assess / assessing / assessment",ipa:"/əˈses/",ru:"оценивать / оценка",def:"To evaluate or estimate the nature, ability or quality of something; to judge.",ex:"PRA supervisors assess the risk that each firm poses to the financial system.",cat:"action"},
+  {w:"framework",ipa:"/ˈfreɪm.wɜːk/",ru:"система, структура, методология",def:"A basic structure underlying a system or concept; a set of rules or principles.",ex:"The PRA uses a risk element framework to assess gross risk and mitigating factors.",cat:"general"},
+  {w:"pose",ipa:"/pəʊz/",ru:"представлять (угрозу/риск)",def:"To present or constitute a problem, risk or challenge.",ex:"The PRA determines the risk that any given firm poses to its objectives.",cat:"action"},
+  {w:"expose",ipa:"/ɪkˈspəʊz/",ru:"подвергать воздействию; раскрывать",def:"To make someone vulnerable to something harmful; to reveal or uncover something.",ex:"Poor governance may expose a firm to serious regulatory risk.",cat:"action"},
+  {w:"offset",ipa:"/ˈɒf.set/",ru:"компенсировать, нейтрализовать",def:"To counteract something by having an equal and opposite force or effect.",ex:"Mitigating factors are actions a firm takes to offset the gross risk.",cat:"action"},
+  {w:"horizon-scanning",ipa:"/həˈraɪ.zən ˈskæn.ɪŋ/",ru:"анализ будущих рисков",def:"The systematic identification of potential future risks, trends or issues before they materialise.",ex:"FCA supervisors combine market knowledge with horizon scanning to identify risks early.",cat:"regulation"},
+  {w:"scope",ipa:"/skəʊp/",ru:"сфера охвата, рамки",def:"The extent of the area or subject matter that something deals with or covers.",ex:"FSMA sets out the scope of regulated activity in the UK.",cat:"general"},
+  {w:"measure",ipa:"/ˈmeʒ.ə/",ru:"мера, показатель; измерять",def:"A plan or course of action taken to achieve a purpose; also to assess the size or extent.",ex:"The PRA assesses gross risk by measuring the potential impact a firm has on system stability.",cat:"general"},
+  {w:"assume",ipa:"/əˈsjuːm/",ru:"брать на себя; предполагать",def:"To take on a responsibility or role; also to suppose something is true without proof.",ex:"After the FCA assumed responsibility for conduct regulation, it radically changed its supervisory approach.",cat:"action"},
+  {w:"underlying",ipa:"/ˌʌn.dəˈlaɪ.ɪŋ/",ru:"лежащий в основе, базовый",def:"Existing beneath the surface; forming a basis or foundation for something.",ex:"The underlying principle of the previous regulator was that it would not intervene until something went wrong.",cat:"general"},
+  {w:"intervene",ipa:"/ˌɪn.təˈviːn/",ru:"вмешиваться, интервенировать",def:"To become involved in a situation to alter or prevent an outcome.",ex:"Under the revised model, the FCA is required to intervene in a proactive way when it believes a firm poses a risk.",cat:"action"},
+  {w:"adopt",ipa:"/əˈdɒpt/",ru:"принять, взять на вооружение",def:"To take up or start to use or follow a plan, method or approach.",ex:"This requires the FCA to adopt a more intrusive and direct regulatory style than before.",cat:"action"},
+  {w:"intrusive",ipa:"/ɪnˈtruː.sɪv/",ru:"навязчивый, вмешивающийся",def:"Having the tendency to intrude or impose on others; more involved than expected or wanted.",ex:"The new supervisory model requires the FCA to adopt a more intrusive and confrontational regulatory style.",cat:"general"},
+  {w:"undoubtedly",ipa:"/ʌnˈdaʊ.tɪd.li/",ru:"несомненно, безусловно",def:"Without doubt; certainly.",ex:"This requires the FCA to make judgements that are undoubtedly more difficult than before.",cat:"general"},
+  {w:"disputed",ipa:"/dɪˈspjuː.tɪd/",ru:"оспариваемый, спорный",def:"Challenged or questioned; subject to argument or disagreement.",ex:"The FCA must make judgements which may be disputed by authorised firms.",cat:"general"},
+  {w:"interact",ipa:"/ˌɪn.təˈrækt/",ru:"взаимодействовать",def:"To act in a way that has an effect on another person or thing; to work together.",ex:"The Consumer Duty interacts with the requirements in PROD with regards to manufacturers and distributors.",cat:"action"},
+  {w:"sophisticated",ipa:"/səˈfɪs.tɪ.keɪ.tɪd/",ru:"сложный, продвинутый; изощрённый",def:"Highly developed or complex; involving advanced methods or systems.",ex:"The FCA requires greater numbers of people and more sophisticated systems and analysis.",cat:"general"},
+  {w:"sector team",ipa:"/ˈsek.tə tiːm/",ru:"отраслевая команда",def:"A group of FCA supervisors with specialist knowledge of a particular industry sector.",ex:"A comprehensive analysis is undertaken by FCA supervisors, supported by sector teams and conduct specialists.",cat:"regulation"},
+  {w:"mystery shopping",ipa:"/ˈmɪs.tər.i ˈʃɒp.ɪŋ/",ru:"тайные покупки (контрольная закупка)",def:"A supervisory technique where investigators pose as customers to test how firms treat their clients.",ex:"The FCA uses mystery shopping and on-site visits to identify issues before they crystallise.",cat:"regulation"},
+  {w:"determine",ipa:"/dɪˈtɜː.mɪn/",ru:"определять, устанавливать",def:"To find out or calculate something; to be the deciding factor in something.",ex:"The PRA determines the net risk that any given firm poses to its objectives.",cat:"action"},
+  {w:"outlining",ipa:"/ˈaʊt.laɪ.nɪŋ/",ru:"излагающий, описывающий (в общих чертах)",def:"Describing the main features or general plan of something.",ex:"In 2019 the FCA published the FCA Mission: Approach to Supervision, outlining eight supervisory principles.",cat:"action"},
+  {w:"pre-emptive",ipa:"/ˌpriːˈemp.tɪv/",ru:"превентивный, упреждающий",def:"Done to prevent something from happening; taking action before a problem arises.",ex:"Proactive supervision is the pre-emptive identification of harm through review and assessment of firms.",cat:"regulation"},
+  {w:"prevent",ipa:"/prɪˈvent/",ru:"предотвращать, не допускать",def:"To stop something from happening or to stop someone from doing something.",ex:"Reactive supervision deals with issues that are emerging or have happened to prevent harm growing.",cat:"action"},
+  {w:"remedy work",ipa:"/ˈrem.ɪ.di wɜːk/",ru:"корректирующая работа, работа по устранению нарушений",def:"Supervisory activity aimed at fixing or correcting harm that has already occurred across a number of firms.",ex:"Thematic supervision involves wider diagnostic or remedy work where there is actual or potential harm.",cat:"regulation"},
+  {w:"precise",ipa:"/prɪˈsaɪs/",ru:"точный, чёткий",def:"Exact and accurate; clearly expressed with no ambiguity.",ex:"The FCA does not provide a precise definition of conduct risk.",cat:"general"},
+  {w:"broadly speaking",ipa:"/ˈbrɔːd.li ˈspiː.kɪŋ/",ru:"в широком смысле, в целом",def:"In a general way, without focusing on specific details.",ex:"Broadly speaking, conduct risk describes the risks posed to customers by the way firms conduct themselves.",cat:"general"},
+  {w:"initiative",ipa:"/ɪˈnɪʃ.ə.tɪv/",ru:"инициатива, начинание",def:"A new plan or process intended to achieve a particular aim or solve a problem.",ex:"The concept of Treating Customers Fairly (TCF) was introduced as an initiative in 2006.",cat:"general"},
+  {w:"empower",ipa:"/ɪmˈpaʊ.ə/",ru:"наделять полномочиями, уполномочивать",def:"To give someone the authority or power to do something.",ex:"Part 9A of FSMA empowers the FCA to make rules that are legally binding on authorised firms.",cat:"action"},
+  {w:"binding",ipa:"/ˈbaɪ.ndɪŋ/",ru:"обязательный (к исполнению), юридически обязывающий",def:"Having legal force; creating an obligation that must be complied with.",ex:"The FCA's Principles for Businesses are legally binding on all authorised firms.",cat:"law"},
+  {w:"expedient",ipa:"/ɪkˈspiː.di.ənt/",ru:"целесообразный, необходимый в данных обстоятельствах",def:"Convenient and practical, although possibly improper; appropriate to a particular purpose.",ex:"FCA rules under Part 9A must be necessary or expedient for the purpose of advancing its operational objectives.",cat:"law"},
+  {w:"grant",ipa:"/ɡrɑːnt/",ru:"предоставлять, выдавать (разрешение, полномочия)",def:"To give or allow something formally or officially, such as permission or authorisation.",ex:"FSMA empowers regulators to grant authorisation to persons applying for Part 4A permission.",cat:"action"},
+  {w:"vary",ipa:"/ˈveər.i/",ru:"изменять, вносить изменения (в разрешение)",def:"To change or alter something; in regulation, to modify the terms of a firm's permission.",ex:"Regulators may vary a firm's permission or cancel its authorisation under FSMA.",cat:"action"},
+  {w:"employ (something)",ipa:"/ɪmˈplɔɪ/",ru:"применять, использовать (метод, меры)",def:"To make use of; to put something into service for a particular purpose.",ex:"FSMA empowers regulators to employ a range of disciplinary measures and sanctions against firms.",cat:"action"},
+];
+
+// ── UTILITIES ────────────────────────────────────────────────────────────────
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function pick(arr,n){return shuffle(arr).slice(0,n);}
+function wrongsFor(w,field,n=3){return shuffle(WORDS.filter(x=>x.w!==w)).slice(0,n).map(x=>x[field]);}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+const SCREENS=['flashcards','match','fillblank','quiz','truefalse','definition','glossary'];
+let currentScreen='flashcards';
+
+function go(id){
+  currentScreen=id;
+  SCREENS.forEach(s=>{document.getElementById('sc-'+s).classList.toggle('active',s===id);});
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',SCREENS[i]===id));
+  if(id==='flashcards') renderCards();
+  else if(id==='match') renderMatch();
+  else if(id==='fillblank') renderFIB();
+  else if(id==='quiz') renderQuiz();
+  else if(id==='truefalse') renderTF();
+  else if(id==='definition') renderDef();
+  else if(id==='glossary') renderGloss();
+  window.scrollTo({top:0,behavior:'smooth'});
+  APP.currentScreen=id; saveAll();
+}
+
+function resetSection(id){
+  if(id==='flashcards'){APP.fc={flipped:[]};}
+  else if(id==='match'){APP.match={set:null,words:[],trans:[],matched:[],tries:0,sel:null,selType:null};initMatch();}
+  else if(id==='fillblank'){APP.fib={order:[],answers:{},chosen:{}};initFIB();}
+  else if(id==='quiz'){APP.quiz={order:[],answers:{}};initQuiz();}
+  else if(id==='truefalse'){APP.tf={order:[],answers:{}};initTF();}
+  else if(id==='definition'){APP.def={order:[],answers:{}};initDef();}
+  saveAll();
+  go(id);
+}
+function resetCurrent(){resetSection(currentScreen);}
+
+// ── 1. FLASHCARDS ────────────────────────────────────────────────────────────
+function renderCards(){
+  const g=document.getElementById('fc-grid');
+  g.innerHTML='';
+  document.getElementById('fc-flipped').textContent=APP.fc.flipped.length;
+  document.getElementById('fc-total').textContent=WORDS.length;
+  WORDS.forEach((wd,i)=>{
+    const d=document.createElement('div');
+    d.className='fc'+(APP.fc.flipped.includes(i)?' flipped':'');
+    d.innerHTML=`<div class="fc-inner">
+      <div class="fc-front"><div><div class="fc-word">${wd.w}</div><div class="fc-ipa">${wd.ipa}</div></div><div class="fc-hint">Click to flip →</div></div>
+      <div class="fc-back"><div><div class="fc-label">Перевод</div><div class="fc-trans">${wd.ru}</div><div class="fc-label" style="margin-top:.6rem">Example</div><div class="fc-example">${wd.ex}</div></div><div class="fc-hint" style="color:var(--teal-d)">← Click to flip back</div></div>
+    </div>`;
+    d.onclick=()=>{
+      d.classList.toggle('flipped');
+      const fi=APP.fc.flipped.indexOf(i);
+      if(fi===-1) APP.fc.flipped.push(i); else APP.fc.flipped.splice(fi,1);
+      document.getElementById('fc-flipped').textContent=APP.fc.flipped.length;
+      saveAll();
+    };
+    g.appendChild(d);
+  });
+}
+
+// ── 2. MATCH (10 pairs) ──────────────────────────────────────────────────────
+function initMatch(){
+  const set=pick(WORDS,10);
+  APP.match={set:set.map(w=>w.w),words:shuffle(set.map(w=>w.w)),trans:shuffle(set.map(w=>w.ru)),matched:[],tries:0,sel:null,selType:null};
+  saveAll();
+  renderMatch();
+}
+function renderMatch(){
+  const ms=APP.match;
+  if(!ms.set){initMatch();return;}
+  // rebuild set objects from word keys
+  const setObjs=ms.set.map(wk=>WORDS.find(x=>x.w===wk));
+  document.getElementById('m-matched').textContent=ms.matched.length;
+  document.getElementById('m-total').textContent=10;
+  document.getElementById('m-tries').textContent=ms.tries;
+  const wc=document.getElementById('mc-words'),tc=document.getElementById('mc-trans');
+  wc.innerHTML='';tc.innerHTML='';
+  const done=document.getElementById('match-done');
+  if(ms.matched.length===10){
+    done.style.display='block';
+    done.textContent=`✓ All matched in ${ms.tries} tries!`;
+    return;
+  }
+  done.style.display='none';
+  ms.words.forEach(w=>{
+    const isM=ms.matched.includes(w);
+    const d=document.createElement('div');
+    d.className='match-item'+(isM?' matched':'')+(ms.sel===w&&ms.selType==='w'?' selected':'');
+    d.textContent=w;
+    if(!isM) d.onclick=()=>matchClick(w,'w',setObjs);
+    wc.appendChild(d);
+  });
+  ms.trans.forEach(t=>{
+    const origWord=setObjs.find(x=>x.ru===t)?.w;
+    const isM=ms.matched.includes(origWord);
+    const d=document.createElement('div');
+    d.className='match-item'+(isM?' matched':'')+(ms.sel===t&&ms.selType==='t'?' selected':'');
+    d.textContent=t;
+    if(!isM) d.onclick=()=>matchClick(t,'t',setObjs);
+    tc.appendChild(d);
+  });
+}
+function matchClick(val,type,setObjs){
+  const ms=APP.match;
+  if(ms.sel===null){ms.sel=val;ms.selType=type;saveAll();renderMatch();return;}
+  if(ms.selType===type){ms.sel=val;saveAll();renderMatch();return;}
+  ms.tries++;
+  let word=type==='w'?val:ms.sel;
+  let tran=type==='t'?val:ms.sel;
+  const correct=setObjs.find(x=>x.w===word&&x.ru===tran);
+  if(correct){
+    ms.matched.push(word);ms.sel=null;ms.selType=null;
+  } else {
+    ms.sel=null;ms.selType=null;
+    saveAll();renderMatch();
+    document.querySelectorAll('.match-item').forEach(el=>{
+      if(el.textContent===word||el.textContent===tran){el.classList.add('wrong');setTimeout(()=>el.classList.remove('wrong'),500);}
+    });
+    return;
+  }
+  saveAll();renderMatch();
+}
+
+// ── 3. FILL IN THE BLANK ─────────────────────────────────────────────────────
+const FIB_DATA=[
+  {sent:"The FCA has ___ responsibility for authorising investment intermediaries — no other regulator shares this role.",blank:"solely",opts:["solely","formerly","particularly","appropriately"],exp:"'Solely' means exclusively or alone. The FCA is solely responsible for authorising intermediaries."},
+  {sent:"Section 19 FSMA makes it a criminal ___ to carry on regulated activity without authorisation.",blank:"offence",opts:["offence","breach","penalty","variance"],exp:"An 'offence' is an act constituting a breach of criminal law. Section 19 = the General Prohibition."},
+  {sent:"The PRA ___ the risk that each firm poses to financial system stability.",blank:"assesses",opts:["assesses","undertakes","exposes","relies"],exp:"'Assesses' = evaluates or judges. The PRA uses a structured risk element framework to assess gross risk."},
+  {sent:"Mitigating factors ___ the gross risk to produce the net risk figure.",blank:"offset",opts:["offset","impact","affect","involve"],exp:"To 'offset' = to counterbalance. Mitigating actions taken by the firm offset the gross risk."},
+  {sent:"The FCA's integrity objective includes the ___ and transparency of the price formation process.",blank:"reliability",opts:["reliability","suitability","resilience","scrutiny"],exp:"'Reliability' = consistent trustworthiness. The integrity objective covers reliability AND transparency of price formation."},
+  {sent:"A firm supervised only by the FCA — not the PRA — is called a ___ firm.",blank:"solo-regulated",opts:["solo-regulated","exempt","former","statutory"],exp:"'Solo-regulated' = authorised only by the FCA, such as asset managers and stockbrokers."},
+  {sent:"FCA supervisors use ___ to identify risks before they crystallise into industry-wide problems.",blank:"horizon-scanning",opts:["horizon-scanning","governance","scrutiny","deterrence"],exp:"'Horizon-scanning' = proactively looking ahead to spot future risks — a key FCA tool."},
+  {sent:"The PRA is ___ to Parliament via the House of Commons Treasury Committee through the Bank of England.",blank:"answerable",opts:["answerable","accountable","related","exempt"],exp:"'Answerable' = required to account for one's actions. 'Answerable to' is the precise regulatory phrase."},
+  {sent:"The FCA aims to deliver credible ___ including a consistent framework for calculating financial penalties.",blank:"deterrence",opts:["deterrence","governance","scope","variance"],exp:"'Deterrence' = discouraging wrongdoing through fear of consequences. Core FCA supervisory goal."},
+  {sent:"PRA supervisors assess whether a firm will continue to meet the ___ ___.",blank:"Threshold Conditions",opts:["Threshold Conditions","statutory objectives","supervisory approach","mitigating factors"],exp:"'Threshold Conditions' = minimum standards a firm must meet to remain PRA-authorised."},
+  {sent:"The consumer protection objective secures an ___ degree of protection — not elimination of all risk.",blank:"appropriate",opts:["appropriate","statutory","prudential","particular"],exp:"'Appropriate' = suitable to the circumstances. Not zero risk — appropriate protection."},
+  {sent:"Poor ___ at a firm may lead the FCA to make judgements at variance with the firm's own management.",blank:"governance",opts:["governance","scope","measure","standing"],exp:"'Governance' = system by which an organisation is directed and controlled."},
+  {sent:"The Financial Services Act 2012 ___ FSMA 2000 to create the twin-peaks regulatory structure.",blank:"amended",opts:["amended","established","enabled","undertook"],exp:"To 'amend' = to make changes to existing legislation. FSA 2012 amended (not replaced) FSMA 2000."},
+  {sent:"The FCA will not take action that would harm the UK's ___ in the international financial community.",blank:"standing",opts:["standing","integrity","scope","resilience"],exp:"'Standing' = reputation or status. The secondary objective (FSA 2023) protects the UK's international standing."},
+  {sent:"The PRA's approach ___ significantly on the judgement of its supervisors when assessing firms.",blank:"relies",opts:["relies","ensures","poses","measures"],exp:"To 'rely' = to depend on. The PRA's approach relies on supervisory judgement, not just rule-based checks."},
+];
+function initFIB(){
+  APP.fib={order:shuffle([...Array(FIB_DATA.length).keys()]),answers:{},chosen:{}};
+  saveAll();
+}
+function renderFIB(){
+  if(!APP.fib.order.length){initFIB();}
+  const st=APP.fib;
+  const done=Object.keys(st.answers).length;
+  const ok=Object.values(st.answers).filter(v=>v===1).length;
+  document.getElementById('fb-done').textContent=done;
+  document.getElementById('fb-ok').textContent=ok;
+  document.getElementById('fb-pct').textContent=done?Math.round(ok/done*100)+'%':'0%';
+  document.getElementById('fb-prog').style.width=(done/FIB_DATA.length*100)+'%';
+  const c=document.getElementById('fib-container');
+  c.innerHTML='';
+  st.order.forEach((di,pos)=>{
+    const item=FIB_DATA[di];
+    const answered=st.answers[di]!==undefined;
+    const chosen=st.chosen[di];
+    const opts=shuffle(item.opts);
+    let sentHtml=item.sent.replace('___',`<span class="blank-input${answered?(item.blank===chosen?' b-correct':' b-wrong'):''} ${answered?'locked':''}">${answered?chosen:'___'}</span>`);
+    let optsHtml=opts.map(o=>`<span class="fib-opt${answered&&chosen===o?' used':''} ${answered?'locked':''}" onclick="pickFIB(${di},'${o.replace(/'/g,"\\'")}')">${o}</span>`).join('');
+    let resHtml=answered?`<div class="fib-result show ${st.answers[di]===1?'ok':'bad'}"><strong>${st.answers[di]===1?'Correct!':'Incorrect.'}</strong> ${item.exp}</div>`:'';
+    const card=document.createElement('div');
+    card.className='fib-card';
+    card.innerHTML=`<div class="q-num">Sentence ${pos+1}</div><div class="fib-sentence">${sentHtml}</div><div class="fib-opts">${optsHtml}</div>${resHtml}`;
+    c.appendChild(card);
+  });
+}
+function pickFIB(di,opt){
+  if(APP.fib.answers[di]!==undefined) return;
+  APP.fib.chosen[di]=opt;
+  APP.fib.answers[di]=opt===FIB_DATA[di].blank?1:0;
+  saveAll(); renderFIB();
+  setTimeout(()=>{
+    const pos=APP.fib.order.indexOf(di);
+    const nextDi=APP.fib.order.find((x,i)=>i>pos&&APP.fib.answers[x]===undefined);
+    if(nextDi!==undefined){
+      const nextPos=APP.fib.order.indexOf(nextDi);
+      document.querySelectorAll('.fib-card')[nextPos]?.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  },350);
+}
+
+// ── 4. QUIZ ──────────────────────────────────────────────────────────────────
+function initQuiz(){
+  const items=shuffle(WORDS).slice(0,15);
+  APP.quiz={order:items.map(w=>WORDS.indexOf(w)),answers:{}};
+  saveAll();
+}
+function renderQuiz(){
+  if(!APP.quiz.order.length){initQuiz();}
+  const st=APP.quiz;
+  const done=Object.keys(st.answers).length;
+  const ok=Object.values(st.answers).filter(v=>v&&v.v===1).length;
+  document.getElementById('qz-done').textContent=done;
+  document.getElementById('qz-ok').textContent=ok;
+  document.getElementById('qz-pct').textContent=done?Math.round(ok/done*100)+'%':'0%';
+  document.getElementById('qz-prog').style.width=(done/15*100)+'%';
+  const c=document.getElementById('qz-container');
+  c.innerHTML='';
+  const letters=['A','B','C','D'];
+  st.order.forEach((wi,pos)=>{
+    const wd=WORDS[wi];
+    const answered=!!st.answers[pos];
+    const chosen=st.answers[pos]?.opt;
+    // generate opts once — store in state if not yet
+    if(!st.opts) st.opts={};
+    if(!st.opts[pos]) st.opts[pos]=shuffle([wd.ru,...wrongsFor(wd.w,'ru',3)]);
+    const opts=st.opts[pos];
+    let optsHtml=opts.map((o,oi)=>{
+      let cls='opt';
+      if(answered) cls+=' dis';
+      if(answered&&o===wd.ru) cls+=' ok';
+      else if(answered&&o===chosen) cls+=' bad';
+      return `<div class="${cls}" onclick="pickQZ(${pos},'${o.replace(/'/g,"\\'")}')"><span class="opt-l">${letters[oi]}</span><span>${o}</span></div>`;
+    }).join('');
+    let expHtml=answered?`<div class="exp-box show ${st.answers[pos].v===1?'exp-ok':'exp-bad'}"><strong>${st.answers[pos].v===1?'Correct!':'Incorrect.'}</strong> <em>${wd.ru}</em></div>`:'';
+    const card=document.createElement('div');
+    card.className='q-card';
+    // clean quiz: just word + ipa, no question text
+    card.innerHTML=`<div class="q-num">Question ${pos+1} <span class="q-tag tag-mc">Translation</span></div>
+      <div class="q-text"><span class="q-word-focus">${wd.w}</span> <span style="font-size:.78rem;font-family:monospace;color:var(--gray)">${wd.ipa}</span></div>
+      <div class="opts">${optsHtml}</div>${expHtml}`;
+    c.appendChild(card);
+  });
+  if(done===15) showResult('qz-container',ok,15,'quiz');
+}
+function pickQZ(pos,opt){
+  if(APP.quiz.answers[pos]) return;
+  const wi=APP.quiz.order[pos];
+  const v=opt===WORDS[wi].ru?1:0;
+  APP.quiz.answers[pos]={opt,v};
+  saveAll(); renderQuiz();
+  setTimeout(()=>{
+    const cards=document.querySelectorAll('#qz-container .q-card');
+    const next=[...Array(15).keys()].find(j=>j>pos&&!APP.quiz.answers[j]);
+    if(next!==undefined) cards[next]?.scrollIntoView({behavior:'smooth',block:'center'});
+  },350);
+}
+
+// ── 5. TRUE / FALSE ──────────────────────────────────────────────────────────
+const TF_DATA=[
+  {sent:["The FCA is ","solely","responsible for the ","prudential"," regulation of banks."],focus:["solely","prudential"],tf:false,fix:"The PRA (not FCA) is responsible for PRUDENTIAL regulation. The FCA is solely responsible for conduct.",exp:"FCA = conduct. PRA = prudential. Classic mix-up."},
+  {sent:["Under Section 19 FSMA, carrying on regulated activity without authorisation is a ","civil"," offence."],focus:["civil"],tf:false,fix:"It is a CRIMINAL offence, not civil.",exp:"Section 19 = General Prohibition = criminal offence. Very frequently tested."},
+  {sent:["The FCA's supervisory model focuses on ","outcome"," testing rather than just checking that systems exist."],focus:["outcome"],tf:true,exp:"Correct — outcome testing is Feature 2 of the new FCA supervisory model."},
+  {sent:["Horizon-scanning","allows regulators to identify risks ","after"," they have already become widespread."],focus:["Horizon-scanning","after"],tf:false,fix:"Horizon-scanning identifies risks BEFORE they crystallise and spread.",exp:"'Before they crystallise' is the key phrase. Horizon-scanning is proactive, not reactive."},
+  {sent:["Mitigating"," factors ","increase"," the gross risk figure to produce the net risk."],focus:["Mitigating","increase"],tf:false,fix:"Mitigating factors REDUCE (offset) gross risk. Net risk = gross minus mitigating.",exp:"Formula: Gross risk − Mitigating factors = Net risk."},
+  {sent:["The FCA's ","competition"," objective considers the ","ease"," with which consumers can switch providers."],focus:["competition","ease"],tf:true,exp:"Correct — ease of switching is explicitly listed under the competition objective."},
+  {sent:["An ","exempt person"," must obtain FCA ","authorisation"," before carrying on regulated activities."],focus:["exempt person","authorisation"],tf:false,fix:"An exempt person does NOT need authorisation — that is the definition of 'exempt'.",exp:"Exempt person = permitted to act without direct authorisation under FSMA."},
+  {sent:["The PRA's ","supervisory approach"," is purely rules-based — it does not ","rely"," on judgement."],focus:["supervisory approach","rely"],tf:false,fix:"The PRA's approach is explicitly JUDGEMENT-BASED.",exp:"PRA = judgement-based, forward-looking, key-risk-focused."},
+  {sent:["Credible ","deterrence"," means the FCA aims to make the cost of misconduct outweigh its benefits."],focus:["deterrence"],tf:true,exp:"Correct — deterrence works by ensuring firms fear consequences more than the gains from misconduct."},
+  {sent:["The FCA's ","integrity"," objective covers the ","suitability"," of listing rules."],focus:["integrity","suitability"],tf:true,exp:"Correct — suitability of listing rules is one of the six components of the integrity objective."},
+  {sent:["The secondary objective (FSA 2023) allows the FCA to weaken ","consumer protection"," rules to boost ","competitiveness","."],focus:["consumer protection","competitiveness"],tf:false,fix:"The secondary objective applies ONLY after primary objectives are met — it cannot override consumer protection.",exp:"Primary objectives always come first."},
+  {sent:["Threshold Conditions"," are the minimum ","standards"," a firm must meet to remain authorised by the PRA."],focus:["Threshold Conditions","standards"],tf:true,exp:"Correct — Threshold Conditions are ongoing minimum standards, not just entry criteria."},
+  {sent:["Governance"," refers to how firms are directed, controlled and held ","accountable","."],focus:["Governance","accountable"],tf:true,exp:"Correct definition of governance. The FCA scrutinises senior management governance."},
+  {sent:["The PRA ","assesses"," both gross risk and ","mitigating"," factors to arrive at a firm's net risk."],focus:["assesses","mitigating"],tf:true,exp:"Correct — net risk = gross risk minus mitigating factors."},
+  {sent:["'","Standing","' in regulatory context means the physical location of a firm's headquarters."],focus:["Standing"],tf:false,fix:"'Standing' means reputation or status — not physical location.",exp:"'Standing' = how you are regarded by others in the international community."},
+];
+function initTF(){
+  APP.tf={order:shuffle([...Array(TF_DATA.length).keys()]).slice(0,12),answers:{}};
+  saveAll();
+}
+function renderTF(){
+  if(!APP.tf.order.length){initTF();}
+  const st=APP.tf;
+  const done=Object.keys(st.answers).length;
+  const ok=Object.values(st.answers).filter(v=>v===1).length;
+  document.getElementById('tf-done').textContent=done;
+  document.getElementById('tf-ok').textContent=ok;
+  document.getElementById('tf-pct').textContent=done?Math.round(ok/done*100)+'%':'0%';
+  document.getElementById('tf-prog').style.width=(done/st.order.length*100)+'%';
+  const c=document.getElementById('tf-container');
+  c.innerHTML='';
+  st.order.forEach((di,pos)=>{
+    const item=TF_DATA[di];
+    const answered=st.answers[pos]!==undefined;
+    // build sentence with highlighted focus words
+    let sentHtml=item.sent.map((part,i)=>{
+      if(i%2===0) return part; // plain text
+      return `<span class="tf-focus">${part}</span>`;
+    }).join('');
+    let btnHtml=!answered?`<div style="display:flex;gap:.6rem;margin-top:.75rem">
+      <button class="btn btn-p" style="flex:1" onclick="pickTF(${pos},true)">✓ TRUE</button>
+      <button class="btn" style="flex:1;background:var(--coral-m);color:#fff" onclick="pickTF(${pos},false)">✗ FALSE</button>
+    </div>`:'';
+    let expHtml=answered?`<div class="exp-box show ${st.answers[pos]===1?'exp-ok':'exp-bad'}"><strong>${st.answers[pos]===1?'Correct!':'Incorrect.'}</strong> ${item.tf?'This statement is TRUE.':'FALSE. '+(item.fix||'')} ${item.exp}</div>`:'';
+    const card=document.createElement('div');
+    card.className='q-card';
+    card.innerHTML=`<div class="q-num">Statement ${pos+1} <span class="q-tag tag-tf">True / False</span></div><div class="q-text">"${sentHtml}"</div>${btnHtml}${expHtml}`;
+    c.appendChild(card);
+  });
+  if(done===st.order.length) showResult('tf-container',ok,st.order.length,'truefalse');
+}
+function pickTF(pos,val){
+  if(APP.tf.answers[pos]!==undefined) return;
+  const di=APP.tf.order[pos];
+  APP.tf.answers[pos]=val===TF_DATA[di].tf?1:0;
+  saveAll(); renderTF();
+  setTimeout(()=>{
+    const cards=document.querySelectorAll('#tf-container .q-card');
+    const next=[...Array(APP.tf.order.length).keys()].find(j=>j>pos&&APP.tf.answers[j]===undefined);
+    if(next!==undefined) cards[next]?.scrollIntoView({behavior:'smooth',block:'center'});
+  },350);
+}
+
+// ── 6. DEFINITION → WORD ─────────────────────────────────────────────────────
+function initDef(){
+  const items=shuffle(WORDS).slice(0,15);
+  APP.def={order:items.map(w=>WORDS.indexOf(w)),answers:{}};
+  saveAll();
+}
+function renderDef(){
+  if(!APP.def.order.length){initDef();}
+  const st=APP.def;
+  const done=Object.keys(st.answers).length;
+  const ok=Object.values(st.answers).filter(v=>v&&v.v===1).length;
+  document.getElementById('df-done').textContent=done;
+  document.getElementById('df-ok').textContent=ok;
+  document.getElementById('df-pct').textContent=done?Math.round(ok/done*100)+'%':'0%';
+  document.getElementById('df-prog').style.width=(done/15*100)+'%';
+  const c=document.getElementById('df-container');
+  c.innerHTML='';
+  const letters=['A','B','C','D'];
+  st.order.forEach((wi,pos)=>{
+    const wd=WORDS[wi];
+    const answered=!!st.answers[pos];
+    const chosen=st.answers[pos]?.opt;
+    if(!st.opts) st.opts={};
+    if(!st.opts[pos]) st.opts[pos]=shuffle([wd.w,...shuffle(WORDS.filter(x=>x.w!==wd.w)).slice(0,3).map(x=>x.w)]);
+    const opts=st.opts[pos];
+    let optsHtml=opts.map((o,oi)=>{
+      let cls='opt';
+      if(answered) cls+=' dis';
+      if(answered&&o===wd.w) cls+=' ok';
+      else if(answered&&o===chosen) cls+=' bad';
+      return `<div class="${cls}" onclick="pickDF(${pos},'${o.replace(/'/g,"\\'")}')"><span class="opt-l">${letters[oi]}</span><span>${o}</span></div>`;
+    }).join('');
+    let expHtml=answered?`<div class="exp-box show ${st.answers[pos].v===1?'exp-ok':'exp-bad'}"><strong>${st.answers[pos].v===1?'Correct!':'Incorrect.'}</strong> Term: <strong>${wd.w}</strong>. Example: <em>${wd.ex}</em></div>`:'';
+    const card=document.createElement('div');
+    card.className='q-card';
+    card.innerHTML=`<div class="q-num">Question ${pos+1} <span class="q-tag tag-def">Definition → Word</span></div><div class="q-context">"${wd.def}"</div><div class="q-text">Which term matches this definition?</div><div class="opts">${optsHtml}</div>${expHtml}`;
+    c.appendChild(card);
+  });
+  if(done===15) showResult('df-container',ok,15,'definition');
+}
+function pickDF(pos,opt){
+  if(APP.def.answers[pos]) return;
+  const wi=APP.def.order[pos];
+  const v=opt===WORDS[wi].w?1:0;
+  APP.def.answers[pos]={opt,v};
+  saveAll(); renderDef();
+  setTimeout(()=>{
+    const cards=document.querySelectorAll('#df-container .q-card');
+    const next=[...Array(15).keys()].find(j=>j>pos&&!APP.def.answers[j]);
+    if(next!==undefined) cards[next]?.scrollIntoView({behavior:'smooth',block:'center'});
+  },350);
+}
+
+// ── 7. GLOSSARY ──────────────────────────────────────────────────────────────
+function renderGloss(filter=''){
+  const c=document.getElementById('gloss-container');
+  c.innerHTML='';
+  const filtered=WORDS.filter(w=>!filter||w.w.toLowerCase().includes(filter.toLowerCase())||w.ru.toLowerCase().includes(filter.toLowerCase())||w.def.toLowerCase().includes(filter.toLowerCase()));
+  const byLetter={};
+  filtered.forEach(w=>{const l=w.w[0].toUpperCase();if(!byLetter[l])byLetter[l]=[];byLetter[l].push(w);});
+  Object.keys(byLetter).sort().forEach(l=>{
+    const ld=document.createElement('div');ld.className='gloss-letter';ld.textContent=l;c.appendChild(ld);
+    byLetter[l].forEach(w=>{
+      const d=document.createElement('div');d.className='gloss-item';
+      d.innerHTML=`<div class="gloss-word">${w.w}</div><div class="gloss-ipa">${w.ipa}</div><div class="gloss-ru">${w.ru}</div><div class="gloss-def">${w.def}</div><div class="gloss-def" style="margin-top:.3rem;font-style:italic;color:var(--teal-d)">"${w.ex}"</div>`;
+      c.appendChild(d);
+    });
+  });
+}
+function filterGloss(){renderGloss(document.getElementById('gloss-search').value);}
+
+// ── RESULT HELPER ────────────────────────────────────────────────────────────
+function showResult(cid,ok,total,screen){
+  const pct=Math.round(ok/total*100);
+  let label,col;
+  if(pct>=80){label='Excellent! 🎉';col='var(--teal-m)';}
+  else if(pct>=65){label='Good work! Keep going.';col='var(--amber)';}
+  else{label='Keep practising — you\'ll get there!';col='var(--coral-m)';}
+  const d=document.createElement('div');
+  d.className='result-card';
+  d.innerHTML=`<div style="font-size:.9rem;color:var(--text2)">Final score</div>
+    <div class="result-big" style="color:${col}">${ok}/${total}</div>
+    <div style="font-size:1rem;font-weight:600;color:${col};margin-bottom:1.2rem">${label}</div>
+    <button class="btn btn-p" onclick="resetSection('${screen}')">↺ Try again with new words</button>`;
+  document.getElementById(cid).appendChild(d);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+loadAll();
+// restore screen
+const startScreen=APP.currentScreen||'flashcards';
+currentScreen=startScreen;
+SCREENS.forEach(s=>document.getElementById('sc-'+s).classList.toggle('active',s===startScreen));
+document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',SCREENS[i]===startScreen));
+if(startScreen==='flashcards') renderCards();
+else if(startScreen==='match'){if(!APP.match.set)initMatch();else renderMatch();}
+else if(startScreen==='fillblank'){if(!APP.fib.order.length)initFIB();renderFIB();}
+else if(startScreen==='quiz'){if(!APP.quiz.order.length)initQuiz();else renderQuiz();}
+else if(startScreen==='truefalse'){if(!APP.tf.order.length)initTF();else renderTF();}
+else if(startScreen==='definition'){if(!APP.def.order.length)initDef();else renderDef();}
+else if(startScreen==='glossary') renderGloss();
+</script>
+</body>
+</html>
